@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, CircleUserRound, Loader2, ScanBarcode, Wifi, XCircle } from "lucide-react";
+import { CheckCircle2, CircleUserRound, Loader2, LogIn, LogOut, ScanBarcode, Wifi, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { Branch, Product } from "@/lib/types";
+import { getInventoryToken, readInventorySession, signInInventory, signOutInventory } from "@/lib/firebase-auth";
+import { lookupInventoryProduct } from "@/lib/inventory-client";
 
 type Notice = { type: "success" | "error"; text: string } | null;
 
@@ -23,12 +25,17 @@ export default function HomePage() {
   const [loadingProduct, setLoadingProduct] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const [accountEmail, setAccountEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [signedInEmail, setSignedInEmail] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
 
   const selectedBranch = branches.find((branch) => branch.key === branchKey);
 
   useEffect(() => {
     const storedUser = window.localStorage.getItem("scan-saved-by");
     if (storedUser) setSavedBy(storedUser);
+    setSignedInEmail(readInventorySession()?.email ?? "");
     void fetch("/api/branches")
       .then(async (response) => {
         if (!response.ok) throw new Error((await response.json()).message);
@@ -38,16 +45,37 @@ export default function HomePage() {
       .catch((error: Error) => setNotice({ type: "error", text: error.message }));
   }, []);
 
+  async function signIn(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSigningIn(true);
+    setNotice(null);
+    try {
+      const session = await signInInventory(accountEmail.trim(), password);
+      setSignedInEmail(session.email);
+      setPassword("");
+      setNotice({ type: "success", text: "เข้าสู่ระบบแล้ว สามารถค้นหาสินค้าจาก API กลางได้" });
+    } catch (error) {
+      setNotice({ type: "error", text: error instanceof Error ? error.message : "เข้าสู่ระบบไม่สำเร็จ" });
+    } finally {
+      setSigningIn(false);
+    }
+  }
+
+  function signOut() {
+    signOutInventory();
+    setSignedInEmail("");
+    setProduct(null);
+    setNotice({ type: "success", text: "ออกจากระบบแล้ว" });
+  }
+
   async function lookupProduct(value = barcode) {
     const trimmed = value.trim();
     if (!trimmed) return;
     setLoadingProduct(true);
     setNotice(null);
     try {
-      const response = await fetch(`/api/products?barcode=${encodeURIComponent(trimmed)}`);
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message ?? "ค้นหาสินค้าไม่สำเร็จ");
-      setProduct(payload as Product);
+      const product = await lookupInventoryProduct(trimmed, await getInventoryToken());
+      setProduct(product);
       setBarcode(trimmed);
       setNotice({ type: "success", text: "พบสินค้าแล้ว กรุณากรอกจำนวนและวันหมดอายุ" });
     } catch (error) {
@@ -111,6 +139,24 @@ export default function HomePage() {
         )}
 
         <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><LogIn className="h-5 w-5 text-primary" />การเชื่อมต่อ API กลาง</CardTitle></CardHeader>
+          <CardContent>
+            {signedInEmail ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                <span>เข้าสู่ระบบเป็น <strong>{signedInEmail}</strong></span>
+                <Button type="button" variant="outline" size="sm" onClick={signOut}><LogOut className="mr-1.5 h-4 w-4" />ออกจากระบบ</Button>
+              </div>
+            ) : (
+              <form onSubmit={signIn} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                <Input type="email" value={accountEmail} onChange={(event) => setAccountEmail(event.target.value)} placeholder="อีเมล" autoComplete="email" required />
+                <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="รหัสผ่าน" autoComplete="current-password" required />
+                <Button type="submit" disabled={signingIn}>{signingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : "เข้าสู่ระบบ"}</Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader><CardTitle>ข้อมูลการบันทึก</CardTitle></CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -134,8 +180,8 @@ export default function HomePage() {
           <CardHeader><CardTitle className="flex items-center gap-2"><ScanBarcode className="h-5 w-5 text-primary" />สแกนบาร์โค้ด</CardTitle></CardHeader>
           <CardContent>
             <div className="flex gap-2">
-              <Input ref={barcodeRef} value={barcode} onChange={(event) => setBarcode(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void lookupProduct(); } }} placeholder="กดปุ่ม Scan ที่เครื่อง แล้วกด Enter" inputMode="numeric" autoFocus />
-              <Button type="button" onClick={() => void lookupProduct()} disabled={loadingProduct} className="shrink-0">
+              <Input ref={barcodeRef} value={barcode} onChange={(event) => setBarcode(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void lookupProduct(); } }} placeholder={signedInEmail ? "กดปุ่ม Scan ที่เครื่อง แล้วกด Enter" : "เข้าสู่ระบบ API กลางก่อนสแกน"} inputMode="numeric" autoFocus disabled={!signedInEmail} />
+              <Button type="button" onClick={() => void lookupProduct()} disabled={loadingProduct || !signedInEmail} className="shrink-0">
                 {loadingProduct ? <Loader2 className="h-4 w-4 animate-spin" /> : "ค้นหา"}
               </Button>
             </div>
