@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { ScanEntry } from "@/lib/types";
 
@@ -13,8 +13,7 @@ function workbookPath() {
 
 function setupWorksheet(workbook: ExcelJS.Workbook) {
   const sheet = workbook.getWorksheet(worksheetName) ?? workbook.addWorksheet(worksheetName);
-  if (sheet.rowCount === 0) {
-    sheet.columns = [
+  const columns = [
       { header: "RecordID", key: "recordId", width: 38 },
       { header: "BR_KEY", key: "branchKey", width: 14 },
       { header: "BR_THAIDESC", key: "branchName", width: 26 },
@@ -27,7 +26,9 @@ function setupWorksheet(workbook: ExcelJS.Workbook) {
       { header: "ExpiryDate", key: "expiryDate", width: 16 },
       { header: "SavedBy", key: "savedBy", width: 22 },
       { header: "SavedAt", key: "savedAt", width: 22 },
-    ];
+  ];
+  if (sheet.rowCount === 0) {
+    sheet.columns = columns;
     const header = sheet.getRow(1);
     header.font = { bold: true, color: { argb: "FFFFFFFF" } };
     header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D4ED8" } };
@@ -35,6 +36,11 @@ function setupWorksheet(workbook: ExcelJS.Workbook) {
     sheet.views = [{ state: "frozen", ySplit: 1 }];
     sheet.autoFilter = "A1:L1";
   }
+  // Excel files preserve cells and formatting, but not ExcelJS's object keys.
+  // Rebind keys after every read without replacing existing headers or data.
+  columns.forEach((column, index) => {
+    sheet.getColumn(index + 1).key = column.key;
+  });
   return sheet;
 }
 
@@ -72,5 +78,19 @@ async function appendScan(entry: ScanEntry) {
 export function appendScanToExcel(entry: ScanEntry) {
   const task = writeQueue.then(() => appendScan(entry));
   writeQueue = task.catch(() => undefined);
+  return task;
+}
+
+export function readScanReport(): Promise<Buffer | null> {
+  // Serialize the snapshot with writes so downloads never read a partial XLSX.
+  const task = writeQueue.then(async () => {
+    try {
+      return await readFile(workbookPath());
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw error;
+    }
+  });
+  writeQueue = task.then(() => undefined, () => undefined);
   return task;
 }

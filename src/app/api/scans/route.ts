@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendScanToExcel } from "@/lib/excel";
+import { rejectUnauthorizedInventoryRequest } from "@/lib/server-auth";
 import type { ScanEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -9,6 +10,8 @@ function isValidDate(value: unknown): value is string {
 }
 
 export async function POST(request: NextRequest) {
+  const rejection = await rejectUnauthorizedInventoryRequest(request);
+  if (rejection) return rejection;
   try {
     const body = (await request.json()) as Partial<ScanEntry>;
     const quantity = Number(body.quantity);

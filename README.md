@@ -9,8 +9,8 @@
 ## เริ่มต้นใช้งาน
 
 1. คัดลอก `.env.example` เป็น `.env` หรือ `.env.local`
-2. ตั้งค่า `NEXT_PUBLIC_INVENTORY_API_URL` และ `NEXT_PUBLIC_FIREBASE_API_KEY` ให้ตรงกับ API กลาง/Firebase project เดียวกัน จากนั้นตั้งค่า `SQL_*` และ `EXCEL_FILE_PATH` สำหรับข้อมูลสาขาและไฟล์ Excel
-3. ใช้ `DEMO_MODE=true` เพื่อดูหน้าจอและทดสอบโดยไม่ต่อ SQL Server
+2. ตั้งค่า `INVENTORY_API_URL` และ `NEXT_PUBLIC_FIREBASE_API_KEY` ให้ตรงกับ API กลาง/Firebase project เดียวกัน จากนั้นตั้งค่า `SQL_*` และ `EXCEL_FILE_PATH` สำหรับข้อมูลสาขาและไฟล์ Excel
+3. `DEMO_MODE=true` จำลองเฉพาะสาขา การค้นหาสินค้ายังต้อง Login และใช้ API จริง
 4. ติดตั้งแพ็กเกจด้วย `npm install` หรือ `pnpm install`
 5. รันด้วย `npm run dev` หรือ `pnpm dev`
 
@@ -18,4 +18,16 @@
 
 ## API กลาง
 
+เบราว์เซอร์เรียก `/api/products` ของเว็บสแกน แล้ว Next.js ส่ง token ต่อไป API กลาง ตั้ง `INVENTORY_API_URL=http://127.0.0.1:3001/api/v1` เมื่อทั้งสองบริการอยู่บนเครื่องเดียวกัน ตัวแปร `NEXT_PUBLIC_INVENTORY_API_URL` เดิมไม่ถูกใช้อีกแล้ว ดู [คู่มือติดตั้ง](docs/server-setup.md)
+
 ผู้ใช้ต้อง Login ด้วย Firebase account ที่ API กลางอนุญาตก่อนค้นหาสินค้า ระบบส่ง Firebase ID token ไปยัง `GET /api/v1/products/scan/:barcode` และ map `goodsCode`, `sku`, `name`, `scannedUnit` เป็นข้อมูลสินค้าที่แสดงในหน้าสแกน ข้อมูลสาขาและการบันทึก Excel ยังคงทำงานในระบบนี้ตามเดิม
+
+Login อนุญาตเฉพาะโดเมน `@newgenman.co.th` และ `@petmoregroups.com` (ไม่แยกตัวพิมพ์เล็ก/ใหญ่ ไม่รวม subdomain) เซสชันเดิมที่เป็นโดเมนอื่นจะถูกลบเมื่ออ่านเซสชัน API สินค้า สาขา และบันทึกรายการต้องรับ `Authorization: Bearer <Firebase ID token>` และตรวจบัญชีกับ Firebase ก่อนใช้งาน รวมถึงเมื่อเปิด `DEMO_MODE` เซิร์ฟเวอร์จึงต้องเชื่อมต่อ Firebase ได้ โดยใช้ `NEXT_PUBLIC_FIREBASE_API_KEY` เดิม
+
+รันทดสอบกฎ Login และสิทธิ์ API ด้วย `npm test` และตรวจ TypeScript ด้วย `npm run typecheck`
+
+## ดาวน์โหลดรายงานรวม
+
+ที่หน้าสแกน กด **ดาวน์โหลดรายงานทั้งหมด (.xlsx)** ใต้แบบฟอร์มเพื่อรับ `ScanData.xlsx` รวมรายการที่ทุกคนบันทึกไว้ ทุกสาขาและทุกวัน พร้อมชื่อผู้บันทึกและเวลาบันทึก โดยไม่กรองตามสาขาที่เลือกในแบบฟอร์ม ข้อมูลมาจากไฟล์กลาง `EXCEL_FILE_PATH` ของเซิร์ฟเวอร์นี้ จึงไม่รวมไฟล์ที่เก็บแยกบนเซิร์ฟเวอร์อื่น
+
+`GET /api/reports` ต้องส่ง Firebase ID token ใน Authorization header และผ่านกฎสองโดเมนเช่นเดียวกับ API อื่น การอ่านรายงานใช้คิวเดียวกับการบันทึกเพื่อไม่อ่านไฟล์ขณะเขียน หากยังไม่มีไฟล์ ระบบจะแจ้งว่ายังไม่มีรายงาน

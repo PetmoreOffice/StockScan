@@ -6,6 +6,7 @@ import { ArrowRight, Loader2, ScanBarcode, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { readInventorySession, signInInventory } from "@/lib/firebase-auth";
+import { allowedEmailMessage } from "@/lib/auth-policy";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function LoginPage() {
           <p className="mt-2 text-sm leading-6 text-slate-300">เข้าสู่ระบบก่อนเริ่มสแกนและบันทึกรายการรับสินค้า</p>
         </div>
         <form onSubmit={signIn} className="space-y-5 p-7">
-          <div className="space-y-2"><label htmlFor="email" className="text-sm font-semibold text-slate-800">อีเมล</label><Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" autoFocus required placeholder="name@company.com" /></div>
+          <div className="space-y-2"><label htmlFor="email" className="text-sm font-semibold text-slate-800">อีเมล</label><Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" autoFocus required placeholder="name@newgenman.co.th" aria-describedby="email-policy" /><p id="email-policy" className="text-xs leading-5 text-slate-500">{allowedEmailMessage}</p></div>
           <div className="space-y-2"><label htmlFor="password" className="text-sm font-semibold text-slate-800">รหัสผ่าน</label><Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required placeholder="รหัสผ่านของคุณ" /></div>
           {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">{error}</p>}
           <Button type="submit" size="lg" disabled={signingIn} className="w-full">{signingIn ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />กำลังเข้าสู่ระบบ</> : <>เข้าสู่ระบบ<ArrowRight className="ml-2 h-5 w-5" /></>}</Button>

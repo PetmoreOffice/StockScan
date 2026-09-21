@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { rejectUnauthorizedInventoryRequest } from "@/lib/server-auth";
 import { listBranches } from "@/lib/sql-server";
 import type { Branch } from "@/lib/types";
 
@@ -10,7 +11,9 @@ const demoBranches: Branch[] = [
   { key: "003", name: "สาขาบางนา" },
 ];
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const rejection = await rejectUnauthorizedInventoryRequest(request);
+  if (rejection) return rejection;
   if (process.env.DEMO_MODE === "true") return NextResponse.json(demoBranches);
   try {
     return NextResponse.json(await listBranches());

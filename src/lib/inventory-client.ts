@@ -12,13 +12,11 @@ type CentralProduct = {
 };
 
 function apiBaseUrl() {
-  const value = process.env.NEXT_PUBLIC_INVENTORY_API_URL?.replace(/\/$/, "");
-  if (!value) throw new Error("ยังไม่ได้ตั้งค่า NEXT_PUBLIC_INVENTORY_API_URL");
-  return value;
+  return "/api/products";
 }
 
 export async function lookupInventoryProduct(barcode: string, token: string): Promise<Product> {
-  const response = await fetch(`${apiBaseUrl()}/products/scan/${encodeURIComponent(barcode)}`, {
+  const response = await fetch(`${apiBaseUrl()}?barcode=${encodeURIComponent(barcode)}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const payload = (await response.json()) as CentralProduct & { message?: string };

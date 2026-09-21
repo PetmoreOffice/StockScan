@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findProductByBarcode } from "@/lib/sql-server";
-import type { Product } from "@/lib/types";
+import { rejectUnauthorizedInventoryRequest } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
-const demoProduct: Product = {
-  goodsKey: "10001",
-  barcode: "8850000000012",
-  skuKey: "501",
-  skuCode: "WATER-600",
-  skuName: "น้ำดื่มตัวอย่าง 600 มล.",
-  unitKey: "1",
-  unitName: "ขวด",
-};
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const barcode = request.nextUrl.searchParams.get("barcode")?.trim();
-  if (!barcode) return NextResponse.json({ message: "กรุณาระบุบาร์โค้ด" }, { status: 400 });
-  if (process.env.DEMO_MODE === "true") {
-    return NextResponse.json(barcode === demoProduct.barcode ? demoProduct : { ...demoProduct, barcode });
+  if (!barcode || barcode.length > 100) return NextResponse.json({ message: "กรุณาระบุบาร์โค้ดที่ถูกต้อง" }, { status: 400 });
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Bearer ") || !authorization.slice(7).trim()) {
+    return NextResponse.json({ message: "กรุณาเข้าสู่ระบบก่อนค้นหาสินค้า" }, { status: 401 });
   }
+  const base = (process.env.INVENTORY_API_URL || "http://127.0.0.1:3001/api/v1").replace(/\/+$/, "");
+  const rejection = await rejectUnauthorizedInventoryRequest(request);
+  if (rejection) return rejection;
   try {
-    const product = await findProductByBarcode(barcode);
-    if (!product) return NextResponse.json({ message: "ไม่พบรหัสสินค้าในฐานข้อมูล" }, { status: 404 });
-    return NextResponse.json(product);
-  } catch (error) {
-    console.error("Product lookup failed", error);
-    return NextResponse.json({ message: "ไม่สามารถค้นหาสินค้าจาก SQL Server ได้" }, { status: 503 });
+    const upstream = await fetch(`${base}/products/scan/${encodeURIComponent(barcode)}`, {
+      headers: { Authorization: authorization },
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+    });
+    return NextResponse.json(await upstream.json(), {
+      status: upstream.status, headers: { "Cache-Control": "no-store" },
+    });
+  } catch {
+    return NextResponse.json({ message: "เว็บเชื่อมต่อ API กลางไม่ได้ กรุณาตรวจ INVENTORY_API_URL และสถานะ API" }, { status: 502 });
   }
 }

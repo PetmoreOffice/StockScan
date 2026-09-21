@@ -1,3 +1,5 @@
+import { allowedEmailMessage, isAllowedInventoryEmail } from "@/lib/auth-policy";
+
 const sessionStorageKey = "inventory-firebase-session";
 
 type StoredSession = {
@@ -28,7 +30,13 @@ function save(session: StoredSession) {
 export function readInventorySession(): StoredSession | null {
   try {
     const value = window.localStorage.getItem(sessionStorageKey);
-    return value ? (JSON.parse(value) as StoredSession) : null;
+    if (!value) return null;
+    const session = JSON.parse(value) as StoredSession | null;
+    if (!session || !isAllowedInventoryEmail(session.email)) {
+      signOutInventory();
+      return null;
+    }
+    return session;
   } catch {
     return null;
   }
@@ -39,6 +47,8 @@ export function signOutInventory() {
 }
 
 export async function signInInventory(email: string, password: string): Promise<StoredSession> {
+  email = email.trim();
+  if (!isAllowedInventoryEmail(email)) throw new Error(allowedEmailMessage);
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey()}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -47,6 +57,10 @@ export async function signInInventory(email: string, password: string): Promise<
   const payload = (await response.json()) as FirebaseSignInResponse;
   if (!response.ok || !payload.idToken) {
     throw new Error(payload.error?.message === "INVALID_LOGIN_CREDENTIALS" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" : "เข้าสู่ระบบ Firebase ไม่สำเร็จ");
+  }
+  if (!isAllowedInventoryEmail(payload.email)) {
+    signOutInventory();
+    throw new Error(allowedEmailMessage);
   }
   const session: StoredSession = {
     email: payload.email,
