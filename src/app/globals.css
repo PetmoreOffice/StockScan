@@ -4,25 +4,45 @@
 
 @layer base {
   :root {
-    --background: 216 33% 97%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --primary: 221 83% 38%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 214 32% 91%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 199 89% 48%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 72% 51%;
+    --background: 202 66% 8%;
+    --foreground: 135 18% 94%;
+    --card: 202 52% 13%;
+    --card-foreground: 135 18% 94%;
+    --primary: 77 100% 62%;
+    --primary-foreground: 202 66% 8%;
+    --secondary: 201 37% 20%;
+    --secondary-foreground: 135 18% 94%;
+    --muted: 202 37% 17%;
+    --muted-foreground: 198 18% 70%;
+    --accent: 15 100% 67%;
+    --accent-foreground: 202 66% 8%;
+    --destructive: 9 83% 63%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214 32% 86%;
-    --input: 214 32% 86%;
-    --ring: 221 83% 53%;
-    --radius: 0.9rem;
+    --border: 198 33% 26%;
+    --input: 198 33% 26%;
+    --ring: 77 100% 62%;
+    --radius: 1rem;
   }
   * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; }
+  body { @apply bg-background text-foreground antialiased; font-family: Tahoma, "Leelawadee UI", sans-serif; }
+  ::selection { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+}
+
+@layer utilities {
+  .scan-field {
+    background:
+      linear-gradient(90deg, transparent 0 7%, hsl(var(--primary) / .14) 7% 9%, transparent 9% 18%, hsl(var(--primary) / .24) 18% 19%, transparent 19% 27%, hsl(var(--primary) / .12) 27% 31%, transparent 31% 39%, hsl(var(--primary) / .22) 39% 41%, transparent 41% 55%, hsl(var(--primary) / .16) 55% 57%, transparent 57% 64%, hsl(var(--primary) / .25) 64% 66%, transparent 66% 77%, hsl(var(--primary) / .12) 77% 80%, transparent 80% 91%, hsl(var(--primary) / .22) 91% 93%, transparent 93%),
+      hsl(202 63% 10%);
+    background-size: 180px 100%, auto;
+  }
+  .scan-sweep::after {
+    content: "";
+    position: absolute;
+    left: 9%; right: 9%; top: 50%; height: 2px;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 18px hsl(var(--primary) / .8);
+    animation: scan-sweep 2.6s ease-in-out infinite;
+  }
+  @keyframes scan-sweep { 0%,100% { transform: translateY(-42px); opacity: .35; } 50% { transform: translateY(42px); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .scan-sweep::after { animation: none; } }
 }

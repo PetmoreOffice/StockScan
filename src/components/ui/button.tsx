@@ -5,13 +5,13 @@ export function Button({ className, variant = "default", size = "default", ...pr
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-xl font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
-        variant === "default" && "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
-        variant === "outline" && "border bg-white text-slate-700 hover:bg-slate-50",
-        variant === "ghost" && "hover:bg-slate-100",
+        "inline-flex items-center justify-center rounded-2xl font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-45",
+        variant === "default" && "bg-primary text-primary-foreground shadow-[0_8px_0_hsl(77_72%_38%)] hover:-translate-y-0.5 hover:shadow-[0_10px_0_hsl(77_72%_38%)] active:translate-y-1 active:shadow-[0_2px_0_hsl(77_72%_38%)]",
+        variant === "outline" && "border-border bg-transparent text-foreground hover:border-primary hover:bg-primary/10",
+        variant === "ghost" && "text-foreground hover:bg-white/10",
         variant === "destructive" && "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        size === "default" && "h-11 px-4 text-sm",
-        size === "lg" && "h-14 px-5 text-base",
+        size === "default" && "h-12 px-5 text-sm",
+        size === "lg" && "h-16 px-6 text-base",
         size === "sm" && "h-9 px-3 text-xs",
         className,
       )}
