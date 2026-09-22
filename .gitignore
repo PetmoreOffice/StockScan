@@ -6,3 +6,6 @@ out
 .env.local
 data/*.xlsx
 *.tsbuildinfo
+
+# Internal runbook: server addresses and deployment details stay off the public repo.
+docs/server-setup.md

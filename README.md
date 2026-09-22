@@ -30,7 +30,7 @@ EXCEL_MIRROR_PATH=//file-server/share/โฟลเดอร์ส่วนกล
 
 ## API กลาง
 
-เบราว์เซอร์เรียก `/api/products` ของเว็บสแกน แล้ว Next.js ส่ง token ต่อไป API กลาง ตั้ง `INVENTORY_API_URL=http://127.0.0.1:3001/api/v1` เมื่อทั้งสองบริการอยู่บนเครื่องเดียวกัน ตัวแปร `NEXT_PUBLIC_INVENTORY_API_URL` เดิมไม่ถูกใช้อีกแล้ว ดู [คู่มือติดตั้ง](docs/server-setup.md)
+เบราว์เซอร์เรียก `/api/products` ของเว็บสแกน แล้ว Next.js ส่ง token ต่อไป API กลาง ตั้ง `INVENTORY_API_URL=http://127.0.0.1:3001/api/v1` เมื่อทั้งสองบริการอยู่บนเครื่องเดียวกัน ตัวแปร `NEXT_PUBLIC_INVENTORY_API_URL` เดิมไม่ถูกใช้อีกแล้ว คู่มือติดตั้งบนเซิร์ฟเวอร์อยู่ที่ `docs/server-setup.md` ซึ่งเก็บไว้ในเครื่องเท่านั้น ไม่ได้อยู่ใน repo เพราะมีที่อยู่เครื่องและรายละเอียดการติดตั้งภายใน
 
 ผู้ใช้ต้อง Login ด้วย Firebase account ที่ API กลางอนุญาตก่อนค้นหาสินค้า ระบบส่ง Firebase ID token ไปยัง `GET /api/v1/products/scan/:barcode` และ map `goodsCode`, `sku`, `name`, `scannedUnit` เป็นข้อมูลสินค้าที่แสดงในหน้าสแกน ข้อมูลสาขาและการบันทึก Excel ยังคงทำงานในระบบนี้ตามเดิม
 
