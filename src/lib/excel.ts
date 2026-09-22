@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { existsSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { ScanEntry } from "@/lib/types";
 
@@ -9,6 +9,30 @@ let writeQueue: Promise<void> = Promise.resolve();
 
 function workbookPath() {
   return resolve(process.env.EXCEL_FILE_PATH ?? "./data/ScanData.xlsx");
+}
+
+function mirrorPath() {
+  const configured = process.env.EXCEL_MIRROR_PATH?.trim();
+  return configured ? resolve(configured) : null;
+}
+
+// Publish a copy other departments can open. The master workbook stays local, so a
+// share that is offline or locked by a reader must never fail a scan already saved.
+async function mirrorWorkbook(source: string) {
+  const target = mirrorPath();
+  if (!target) return true;
+  const staging = `${target}.tmp`;
+  try {
+    await mkdir(dirname(target), { recursive: true });
+    // Copy aside then rename, so a reader never opens a half-written workbook.
+    await copyFile(source, staging);
+    await rename(staging, target);
+    return true;
+  } catch (error) {
+    console.error("Excel mirror failed", target, error);
+    await rm(staging, { force: true }).catch(() => undefined);
+    return false;
+  }
 }
 
 function setupWorksheet(workbook: ExcelJS.Workbook) {
@@ -73,11 +97,12 @@ async function appendScan(entry: ScanEntry) {
   row.alignment = { vertical: "middle" };
 
   await workbook.xlsx.writeFile(filePath);
+  return mirrorWorkbook(filePath);
 }
 
-export function appendScanToExcel(entry: ScanEntry) {
+export function appendScanToExcel(entry: ScanEntry): Promise<boolean> {
   const task = writeQueue.then(() => appendScan(entry));
-  writeQueue = task.catch(() => undefined);
+  writeQueue = task.then(() => undefined, () => undefined);
   return task;
 }
 

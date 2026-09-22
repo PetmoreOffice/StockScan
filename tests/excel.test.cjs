@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { mkdtemp, unlink, rmdir } = require("node:fs/promises");
+const { mkdtemp, unlink, rmdir, readdir, writeFile, rm } = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
@@ -38,6 +38,36 @@ test("Excel appends survive reloads and queued saves without losing rows or form
   } finally {
     await unlink(filename).catch((error) => { if (error.code !== "ENOENT") throw error; });
     await rmdir(dir);
+  }
+});
+
+test("saves publish a copy to the share and survive one that cannot be written", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "scan-mirror-test-"));
+  const master = path.join(dir, "master.xlsx");
+  const mirror = path.join(dir, "share", "ScanData.xlsx");
+  const entry = { goodsKey: "1", barcode: "0001", skuCode: "001", skuName: "Test product", unitName: "piece", branchKey: "001", branchName: "Test branch", quantity: 2, expiryDate: "2027-01-02", savedBy: "tester", savedAt: "2026-09-21T03:00:00.000Z" };
+  const writerFor = (env, globals = {}) => sourceLoader({}, { ...globals, process: { env: { EXCEL_FILE_PATH: master, ...env } } })("@/lib/excel").appendScanToExcel;
+  try {
+    const append = writerFor({ EXCEL_MIRROR_PATH: mirror });
+    assert.equal(await append(entry), true);
+    assert.equal(await append({ ...entry, barcode: "0002" }), true);
+    const published = new ExcelJS.Workbook();
+    await published.xlsx.readFile(mirror);
+    const sheet = published.getWorksheet("ScanData");
+    assert.equal(sheet.rowCount, 3);
+    assert.deepEqual([2, 3].map((row) => sheet.getRow(row).getCell(5).value), ["0001", "0002"]);
+    // Readers must never find a half-copied staging file sitting in the share.
+    assert.deepEqual(await readdir(path.dirname(mirror)), ["ScanData.xlsx"]);
+
+    const blocker = path.join(dir, "blocked");
+    await writeFile(blocker, "a file where a folder would have to be");
+    const blockedAppend = writerFor({ EXCEL_MIRROR_PATH: path.join(blocker, "ScanData.xlsx") }, { console: { ...console, error() {} } });
+    assert.equal(await blockedAppend({ ...entry, barcode: "0003" }), false);
+    const kept = new ExcelJS.Workbook();
+    await kept.xlsx.readFile(master);
+    assert.deepEqual([2, 3, 4].map((row) => kept.getWorksheet("ScanData").getRow(row).getCell(5).value), ["0001", "0002", "0003"]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });
 

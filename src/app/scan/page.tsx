@@ -143,7 +143,8 @@ export default function ScanPage() {
       const response = await fetch("/api/scans", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ ...product, branchKey, branchName: selectedBranch.name, quantity, expiryDate, savedBy: savedBy.trim() }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message ?? "บันทึกไม่สำเร็จ");
-      setNotice({ type: "success", text: "บันทึกลง Excel สำเร็จ พร้อมสแกนรายการถัดไป" });
+      // Saved either way: never imply failure, or staff rescan and duplicate the row.
+      setNotice({ type: "success", text: payload.mirrored === false ? "บันทึกสำเร็จ แต่คัดลอกไปโฟลเดอร์ส่วนกลางไม่ได้ กรุณาแจ้ง MIS" : "บันทึกลง Excel สำเร็จ พร้อมสแกนรายการถัดไป" });
       lookupVersion.current += 1;
       matchedBarcode.current = null;
       setBarcode(""); setProduct(null); setQuantity("1"); setExpiryDate("");

@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
       savedAt: new Date().toISOString(),
     };
 
-    await appendScanToExcel(entry);
-    return NextResponse.json({ ok: true, savedAt: entry.savedAt });
+    const mirrored = await appendScanToExcel(entry);
+    return NextResponse.json({ ok: true, savedAt: entry.savedAt, mirrored });
   } catch (error) {
     console.error("Scan save failed", error);
     return NextResponse.json({ message: "ไม่สามารถบันทึกรายการลง Excel ได้" }, { status: 500 });
