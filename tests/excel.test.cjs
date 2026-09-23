@@ -31,13 +31,37 @@ test("Excel appends survive reloads and queued saves without losing rows or form
     for (const r of [2, 3, 4, 5]) {
       assert.equal(sheet.getRow(r).getCell(9).value, 2);
       assert.equal(sheet.getRow(r).getCell(10).numFmt, "dd/mm/yyyy");
-      assert.equal(sheet.getRow(r).getCell(12).value.toISOString(), "2026-09-21T03:00:00.000Z");
+      // 03:00Z is 10:00 in Bangkok, and the workbook shows Bangkok time.
+      assert.equal(sheet.getRow(r).getCell(12).value.toISOString(), "2026-09-21T10:00:00.000Z");
     }
     assert.equal(sheet.getRow(1).getCell(1).value, "RecordID");
     assert.equal(sheet.getRow(1).getCell(1).font.bold, true);
   } finally {
     await unlink(filename).catch((error) => { if (error.code !== "ENOENT") throw error; });
     await rmdir(dir);
+  }
+});
+
+test("dates read back as the day picked and the Bangkok time saved, whatever the server clock", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "scan-date-test-"));
+  const originalTZ = process.env.TZ;
+  const entry = { goodsKey: "1", barcode: "0001", skuCode: "001", skuName: "Test product", unitName: "piece", branchKey: "001", branchName: "Test branch", quantity: 1, expiryDate: "2026-09-21", savedBy: "tester", savedAt: "2026-09-21T08:41:00.000Z" };
+  try {
+    // A server left on UTC must not shift what operators read in the workbook.
+    for (const zone of ["Asia/Bangkok", "UTC", "America/New_York"]) {
+      process.env.TZ = zone;
+      const filename = path.join(dir, `${zone.replace("/", "-")}.xlsx`);
+      await sourceLoader({}, { process: { env: { EXCEL_FILE_PATH: filename } } })("@/lib/excel").appendScanToExcel(entry);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filename);
+      const row = workbook.getWorksheet("ScanData").getRow(2);
+      assert.equal(row.getCell(10).value.toISOString(), "2026-09-21T00:00:00.000Z", `expiry drifted under ${zone}`);
+      assert.equal(row.getCell(12).value.toISOString(), "2026-09-21T15:41:00.000Z", `saved time drifted under ${zone}`);
+      assert.equal(row.getCell(10).numFmt, "dd/mm/yyyy");
+    }
+  } finally {
+    if (originalTZ === undefined) delete process.env.TZ; else process.env.TZ = originalTZ;
+    await rm(dir, { recursive: true, force: true });
   }
 });
 

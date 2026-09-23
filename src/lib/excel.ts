@@ -68,6 +68,21 @@ function setupWorksheet(workbook: ExcelJS.Workbook) {
   return sheet;
 }
 
+// Excel stores no timezone; it displays whatever the serial says, and ExcelJS builds
+// that serial from a Date's UTC parts. So put Bangkok wall-clock time in those parts,
+// or a save at 15:41 reads back as 08:41 wherever the workbook is opened.
+function bangkokWallClock(instant: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok", hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(instant).reduce<Record<string, string>>((all, part) => {
+    all[part.type] = part.value;
+    return all;
+  }, {});
+  return new Date(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}Z`);
+}
+
 async function appendScan(entry: ScanEntry) {
   const filePath = workbookPath();
   await mkdir(dirname(filePath), { recursive: true });
@@ -88,9 +103,11 @@ async function appendScan(entry: ScanEntry) {
     skuName: entry.skuName,
     unitName: entry.unitName,
     quantity: entry.quantity,
-    expiryDate: entry.expiryDate ? new Date(`${entry.expiryDate}T00:00:00`) : null,
+    // A calendar date carries no time of day, so pin it to UTC midnight and let the
+    // date-only format show it. Local midnight would shift it a day in either direction.
+    expiryDate: entry.expiryDate ? new Date(`${entry.expiryDate}T00:00:00Z`) : null,
     savedBy: entry.savedBy,
-    savedAt: new Date(entry.savedAt),
+    savedAt: bangkokWallClock(new Date(entry.savedAt)),
   });
   row.getCell("expiryDate").numFmt = "dd/mm/yyyy";
   row.getCell("savedAt").numFmt = "dd/mm/yyyy hh:mm:ss";
