@@ -73,7 +73,7 @@ async function pageHarness() {
   function enter() { barcodeInput().props.onKeyDown({ key: "Enter", preventDefault() {} }); render(); }
   function submit() { return find((node) => node.type === "form").props.onSubmit({ preventDefault() {} }); }
   render(); await tick(); render();
-  for (const [id, value] of [["branch", "001"], ["savedBy", "Operator"], ["expiryDate", "2027-01-01"]]) {
+  for (const [id, value] of [["branch", "001"], ["nickname", "อาย"], ["fullName", "กฤติยาภรณ์"], ["expiryDate", "2027-01-01"]]) {
     find((node) => node.props?.id === id).props.onChange({ target: { value } }); render();
   }
   return { render, find, lookups, saves, saveResponse, barcodeInput, saveButton, change, enter, submit };
@@ -97,6 +97,7 @@ test("editing a barcode clears the old product and blocks saving until the curre
   await tick(); page.render();
   assert.equal(page.saves.length, 1);
   assert.equal(page.saves[0].body.barcode, "B");
+  assert.equal(page.saves[0].body.savedBy, "อาย-กฤติยาภรณ์");
   assert.equal(page.saves[0].headers.Authorization, "Bearer token");
   assert.equal(page.barcodeInput().props.disabled, true);
   page.change("C"); page.enter(); await tick();
